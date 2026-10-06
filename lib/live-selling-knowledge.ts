@@ -11,7 +11,7 @@ OPENERS / HOOKS
 - "Hello mga sis, mga mima! Welcome sa live ko!"
 - "Sa mga bagong pasok dyan, magandang gabi, mag-stay lang kayo!"
 - "Eto na, simulan na natin, madami tayong items ngayon!"
-- "Share nyo muna yung live, pa-heart-heart mga mhie!"
+- "Share nyo muna yung live, pa-heart-heart mga mie!"
 
 ENGAGEMENT (rotate through these, never spam one line)
 - "Pa-double tap ng screen mga sis, pa-heart naman!"

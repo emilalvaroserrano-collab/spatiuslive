@@ -210,7 +210,7 @@ A: “May pouch at may half-kilo jar, sis. Sa official site, ₱399 yung pouch a
 A: “Yung Original regular coffee blend, yung Decaf mas reduced ang caffeine. Pareho silang Macchiato line pero magkaiba ang formulation—check natin yung ingredient label ng variant na pipiliin mo.”
 
 **Q: “Zero caffeine ba yung Decaf?”**  
-A: “Decaffeinated siya, mhie, pero hindi automatic zero caffeine. Kung strict na caffeine-free ka, mas okay na tingnan muna yung caffeine information sa actual label.”
+A: “Decaffeinated siya, mie, pero hindi automatic zero caffeine. Kung strict na caffeine-free ka, mas okay na tingnan muna yung caffeine information sa actual label.”
 
 **Q: “May collagen at glutathione?”**  
 A: “Yes, listed ingredients sila sa Macchiato product descriptions. Pero kung gusto mo yung exact amount per serving, kailangan natin yung nutrition/ingredient panel ng mismong pack.”

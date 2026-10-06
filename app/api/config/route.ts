@@ -16,6 +16,6 @@ export async function GET() {
     avatarSampleRate: 24000,
     geminiInputSampleRate: 16000,
     geminiModel: process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-live',
-    geminiVoice: process.env.GEMINI_VOICE || 'Aoede',
+    geminiVoice: process.env.GEMINI_VOICE || 'Sulafat',
   })
 }
