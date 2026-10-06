@@ -11,6 +11,7 @@ import {
   type AvatarController,
 } from '@spatius/avatarkit'
 import { KIMMY_SYSTEM_PROMPT } from '@/lib/kimmy-prompt'
+import { LIVE_SELLING_KNOWLEDGE } from '@/lib/live-selling-knowledge'
 import { arrayBufferToBase64, base64ToArrayBuffer, float32ToPcm16, resampleMono } from '@/lib/audio'
 
 type AppConfig = {
@@ -24,8 +25,6 @@ type AppConfig = {
 }
 
 type Status = 'booting' | 'ready' | 'connecting' | 'live' | 'error'
-
-type Transcript = { role: 'viewer' | 'kimmy'; text: string }
 
 class MicCapture {
   context: AudioContext | null = null
@@ -75,15 +74,22 @@ export default function KimmyAvatar() {
   const geminiRef = useRef<any>(null)
   const micRef = useRef(new MicCapture())
   const turnHasAudio = useRef(false)
+  const firstFrameRef = useRef<Promise<void> | null>(null)
 
   const [config, setConfig] = useState<AppConfig | null>(null)
   const [status, setStatus] = useState<Status>('booting')
-  const [statusText, setStatusText] = useState('Loading Nadia…')
-  const [micOn, setMicOn] = useState(false)
-  const [speaking, setSpeaking] = useState(false)
-  const [transcript, setTranscript] = useState<Transcript[]>([])
-  const [typed, setTyped] = useState('')
   const [error, setError] = useState('')
+  const [hideButton, setHideButton] = useState(false)
+
+  // Auto-hide the button 5s after going live; show it again otherwise.
+  useEffect(() => {
+    if (status !== 'live') {
+      setHideButton(false)
+      return
+    }
+    const timer = setTimeout(() => setHideButton(true), 5000)
+    return () => clearTimeout(timer)
+  }, [status])
 
   useEffect(() => {
     let cancelled = false
@@ -93,30 +99,36 @@ export default function KimmyAvatar() {
         const cfg = await cfgRes.json()
         if (!cfgRes.ok) throw new Error(cfg.error || 'Configuration failed')
 
-        const tokenRes = await fetch('/api/spatius/session-token', { method: 'POST' })
-        const tokenData = await tokenRes.json()
-        if (!tokenRes.ok) throw new Error(tokenData.error || 'Could not mint Spatius token')
-
         await AvatarSDK.initialize(cfg.spatiusAppId, {
           ...(cfg.region && cfg.region !== 'auto' ? { region: cfg.region } : {}),
           drivingServiceMode: DrivingServiceMode.direct,
-          audioFormat: { channelCount: 1, sampleRate: cfg.avatarSampleRate },
           logLevel: LogLevel.warning,
         })
-        AvatarSDK.setSessionToken(tokenData.sessionToken)
 
         if (!stageRef.current) throw new Error('Avatar stage is unavailable')
-        const avatar = await AvatarManager.shared.load(cfg.avatarId, (info) => {
-          if (!cancelled && typeof info.progress === 'number') {
-            setStatusText(`Loading Nadia ${Math.round(info.progress * 100)}%`)
-          }
-        })
+        const avatar = await AvatarManager.shared.load(cfg.avatarId)
         if (cancelled) return
 
-        const view = new AvatarView(avatar, stageRef.current)
+        // Audio format belongs to the view, not initialize(). The view
+        // defaults to 16 kHz; Gemini sends 24 kHz PCM, so set it here.
+        const view = new AvatarView(avatar, stageRef.current, {
+          audioFormat: { channelCount: 1, sampleRate: cfg.avatarSampleRate },
+        })
         avatarViewRef.current = view
         controllerRef.current = view.controller
-        view.onFirstRendering = () => setStatusText('Nadia loaded — ready to start Kimmy')
+        let resolveFirstFrame!: () => void
+        firstFrameRef.current = new Promise<void>((resolve) => {
+          resolveFirstFrame = resolve
+        })
+        view.onFirstRendering = () => resolveFirstFrame()
+        view.controller.onConnectionState = (state) => {
+          // Direct Mode only. SDK enters audio-only fallback on timeout and
+          // reports 'failed' — surface it instead of hanging silently.
+          if (!cancelled && state === 'failed') {
+            setError('Avatar connection failed — check network and session token.')
+            setStatus('error')
+          }
+        }
         view.controller.onError = (e: Error) => {
           setError(e.message)
           setStatus('error')
@@ -146,10 +158,44 @@ export default function KimmyAvatar() {
   const connect = useCallback(async () => {
     if (!config || !controllerRef.current || geminiRef.current) return
     setStatus('connecting')
-    setStatusText('Connecting Kimmy…')
     setError('')
 
+    // Mic first, synchronously inside the tap gesture. Chunks are dropped
+    // until the Gemini session exists, then flow automatically.
     try {
+      await micRef.current.start(config.geminiInputSampleRate, (pcm) => {
+        const session = geminiRef.current
+        if (!session) return
+        session.sendRealtimeInput({
+          audio: {
+            data: arrayBufferToBase64(pcm),
+            mimeType: `audio/pcm;rate=${config.geminiInputSampleRate}`,
+          },
+        })
+      })
+    } catch (e: any) {
+      setError(e?.name === 'NotAllowedError' ? 'Microphone permission denied.' : (e?.message || String(e)))
+      setStatus('error')
+      return
+    }
+
+    try {
+      // Lifecycle: wait for the first rendered frame before start(), and
+      // mint a fresh short-lived token for each new connection.
+      if (firstFrameRef.current) {
+        await Promise.race([
+          firstFrameRef.current,
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error('Avatar renderer did not become ready')), 20000),
+          ),
+        ])
+      }
+
+      const spatRes = await fetch('/api/spatius/session-token', { method: 'POST' })
+      const spatData = await spatRes.json()
+      if (!spatRes.ok) throw new Error(spatData.error || 'Could not mint Spatius token')
+      AvatarSDK.setSessionToken(spatData.sessionToken)
+
       const controller = controllerRef.current
       await (controller as any).initializeAudioContext?.()
       await controller.start()
@@ -171,20 +217,23 @@ export default function KimmyAvatar() {
             },
           },
           systemInstruction: {
-            parts: [{ text: KIMMY_SYSTEM_PROMPT }],
+            parts: [{ text: `${KIMMY_SYSTEM_PROMPT}\n\n${LIVE_SELLING_KNOWLEDGE}` }],
+          },
+          // Long live sessions would otherwise die at the context limit.
+          contextWindowCompression: {
+            triggerTokens: '104857',
+            slidingWindow: { targetTokens: '52428' },
           },
         },
         callbacks: {
           onopen: () => {
             setStatus('live')
-            setStatusText('Kimmy is live')
           },
           onmessage: (message) => {
             const server = message.serverContent
 
             if (server?.interrupted) {
               turnHasAudio.current = false
-              setSpeaking(false)
               controllerRef.current?.interrupt()
             }
 
@@ -192,19 +241,8 @@ export default function KimmyAvatar() {
               const pcm = base64ToArrayBuffer(b64)
               if (pcm.byteLength) {
                 turnHasAudio.current = true
-                setSpeaking(true)
                 controllerRef.current?.send(pcm, false)
               }
-            }
-
-            const userText = server?.inputTranscription?.text?.trim()
-            if (userText) {
-              setTranscript(prev => [...prev, { role: 'viewer', text: userText }])
-            }
-
-            const kimmyText = server?.outputTranscription?.text?.trim()
-            if (kimmyText) {
-              setTranscript(prev => [...prev, { role: 'kimmy', text: kimmyText }])
             }
 
             if (server?.turnComplete) {
@@ -212,7 +250,6 @@ export default function KimmyAvatar() {
                 controllerRef.current?.send(new ArrayBuffer(0), true)
                 turnHasAudio.current = false
               }
-              setSpeaking(false)
             }
           },
           onerror: (e) => {
@@ -220,10 +257,8 @@ export default function KimmyAvatar() {
             setStatus('error')
           },
           onclose: () => {
-            setMicOn(false)
-            setSpeaking(false)
+            void micRef.current.stop()
             setStatus(prev => prev === 'error' ? prev : 'ready')
-            setStatusText('Kimmy disconnected')
           },
         },
       })
@@ -234,138 +269,21 @@ export default function KimmyAvatar() {
     }
   }, [config])
 
-  const toggleMic = useCallback(async () => {
-    if (!config || !geminiRef.current) return
-    if (micOn) {
-      await micRef.current.stop()
-      setMicOn(false)
-      return
-    }
-
-    try {
-      await micRef.current.start(config.geminiInputSampleRate, (pcm) => {
-        const session = geminiRef.current
-        if (!session) return
-        session.sendRealtimeInput({
-          audio: {
-            data: arrayBufferToBase64(pcm),
-            mimeType: `audio/pcm;rate=${config.geminiInputSampleRate}`,
-          },
-        })
-      })
-      setMicOn(true)
-    } catch (e: any) {
-      setError(e?.name === 'NotAllowedError' ? 'Microphone permission denied.' : (e?.message || String(e)))
-    }
-  }, [config, micOn])
-
-  const sendText = useCallback(() => {
-    const text = typed.trim()
-    if (!text || !geminiRef.current) return
-    geminiRef.current.sendRealtimeInput({ text })
-    setTyped('')
-  }, [typed])
-
-  const disconnect = useCallback(async () => {
-    await micRef.current.stop()
-    setMicOn(false)
-    geminiRef.current?.close()
-    geminiRef.current = null
-    controllerRef.current?.interrupt()
-    setSpeaking(false)
-    setStatus('ready')
-    setStatusText('Ready to start Kimmy')
-  }, [])
-
   return (
     <main className="shell">
-      <section className="stageCard">
-        <div className="topbar">
-          <div>
-            <span className="eyebrow">SPATIUS REALTIME AVATAR</span>
-            <h1>Kimmy</h1>
-            <p>Nadia visual · Gemini Live voice</p>
-          </div>
-          <div className={`status ${status}`}><span />{statusText}</div>
-        </div>
-
-        <div className="stageWrap sellerStudio">
-          <div className="studioBackdrop" aria-hidden="true">
-            <div className="studioGlow studioGlowLeft" />
-            <div className="studioGlow studioGlowRight" />
-            <div className="studioBrand">
-              <span>KIMMY</span>
-              <strong>LIVE SHOP</strong>
-            </div>
-            <div className="productShelf productShelfLeft">
-              <i /><i /><i />
-            </div>
-            <div className="productShelf productShelfRight">
-              <i /><i /><i />
-            </div>
-          </div>
-
-          <div className="avatarCrop">
-            <div ref={stageRef} className="stage sellerAvatar" />
-          </div>
-
-          <div className="sellerDesk" aria-hidden="true">
-            <div className="deskProducts">
-              <span className="productMock tall" />
-              <span className="productMock short" />
-              <span className="productMock bottle" />
-              <span className="productMock short" />
-              <span className="productMock tall" />
-            </div>
-            <div className="deskFront">KIMMY LIVE</div>
-          </div>
-
-          <div className="liveBadge">LIVE</div>
-          {speaking && <div className="speakingBadge">Kimmy is speaking</div>}
-        </div>
-
-        <div className="controls">
-          {status === 'ready' || status === 'error' ? (
-            <button className="primary" onClick={connect} disabled={!config}>Start Kimmy</button>
-          ) : status === 'connecting' ? (
-            <button className="primary" disabled>Connecting…</button>
-          ) : (
-            <>
-              <button className={`mic ${micOn ? 'active' : ''}`} onClick={toggleMic}>{micOn ? 'Mute Viewer Mic' : 'Open Viewer Mic'}</button>
-              <button className="secondary" onClick={disconnect}>End Session</button>
-            </>
-          )}
-        </div>
-
-        {error && <div className="errorBox">{error}</div>}
-      </section>
-
-      <aside className="panel">
-        <div>
-          <span className="eyebrow">TEST CONVERSATION</span>
-          <h2>Live transcript</h2>
-        </div>
-        <div className="transcript">
-          {transcript.length === 0 ? (
-            <p className="empty">Open the mic and talk to Kimmy, or send a test line below.</p>
-          ) : transcript.map((t, i) => (
-            <div className={`bubble ${t.role}`} key={`${t.role}-${i}`}>
-              <strong>{t.role === 'viewer' ? 'Viewer' : 'Kimmy'}</strong>
-              <p>{t.text}</p>
-            </div>
-          ))}
-        </div>
-        <form className="composer" onSubmit={(e) => { e.preventDefault(); sendText() }}>
-          <input value={typed} onChange={e => setTyped(e.target.value)} placeholder="e.g. Magkano sis?" disabled={status !== 'live'} />
-          <button disabled={status !== 'live' || !typed.trim()}>Send</button>
-        </form>
-        <div className="meta">
-          <span>Avatar: Nadia</span>
-          <span>Persona: Kimmy</span>
-          <span>Voice: {config?.geminiVoice || 'Kore'}</span>
-          <span>Model: {config?.geminiModel || 'gemini-3.8-live'}</span>
-        </div>
-      </aside>
+      <div className="stageWrap cleanStage">
+        <div ref={stageRef} className="stage" />
+      </div>
+      {!hideButton && (
+        <button
+          className="startLive"
+          onClick={connect}
+          disabled={status === 'connecting' || status === 'booting' || !config}
+          title={error || undefined}
+        >
+          {status === 'connecting' || status === 'booting' ? 'Connecting…' : status === 'error' ? 'Retry Live' : 'Start Live'}
+        </button>
+      )}
     </main>
   )
 }

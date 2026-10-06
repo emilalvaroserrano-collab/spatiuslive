@@ -18,7 +18,14 @@ export async function POST() {
   const expireAt = Math.floor(Date.now() / 1000) + ttlMinutes * 60
   const configuredRegion = process.env.SPATIUS_REGION || 'auto'
   const tokenRegion = configuredRegion === 'auto' ? 'us-west' : configuredRegion
-  const base = (process.env.SPATIUS_CONSOLE_ENDPOINT || `https://console.${tokenRegion}.spatius.ai/v1/console`).replace(/\/$/, '')
+  // cn-beijing uses a different console domain; other regions follow the
+  // console.{region}.spatius.ai pattern.
+  const base = (
+    process.env.SPATIUS_CONSOLE_ENDPOINT ||
+    (tokenRegion === 'cn-beijing'
+      ? 'https://console.cn-beijing.spatialwalk.top/v1/console'
+      : `https://console.${tokenRegion}.spatius.ai/v1/console`)
+  ).replace(/\/$/, '')
 
   const upstream = await fetch(`${base}/session-tokens`, {
     method: 'POST',
@@ -26,7 +33,7 @@ export async function POST() {
       'X-Api-Key': apiKey,
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ expireAt, modelVersion: '' }),
+    body: JSON.stringify({ expireAt }),
     cache: 'no-store',
   })
 

@@ -1,261 +1,39 @@
 :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
 * { box-sizing: border-box; }
-html, body { margin: 0; min-height: 100%; background: #090b10; color: #f7f7f8; }
+html, body { margin: 0; min-height: 100%; background: #000; color: #f7f7f8; }
 body { min-height: 100vh; }
-button, input { font: inherit; }
+button { font: inherit; }
 button { cursor: pointer; }
 button:disabled { opacity: .5; cursor: not-allowed; }
 .boot { min-height: 100vh; display: grid; place-items: center; color: #9ca3af; }
-.shell { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(320px, .75fr); gap: 18px; padding: 18px; }
-.stageCard, .panel { background: #11141b; border: 1px solid #222735; border-radius: 24px; overflow: hidden; box-shadow: 0 24px 80px rgba(0,0,0,.25); }
-.stageCard { display: flex; flex-direction: column; }
-.topbar { padding: 22px 24px 18px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
-.eyebrow { display: block; font-size: 11px; letter-spacing: .15em; color: #7f8a9f; font-weight: 700; }
-h1, h2, p { margin-top: 0; }
-h1 { font-size: clamp(34px, 5vw, 64px); margin: 4px 0 2px; letter-spacing: -.04em; }
-h2 { font-size: 24px; margin: 5px 0 0; }
-.topbar p { margin: 0; color: #929aac; }
-.status { white-space: nowrap; display: flex; align-items: center; gap: 8px; padding: 9px 12px; border-radius: 999px; background: #171b24; color: #a7afc0; font-size: 13px; }
-.status span { width: 8px; height: 8px; border-radius: 50%; background: #718096; }
-.status.live span { background: #22c55e; box-shadow: 0 0 0 5px rgba(34,197,94,.12); }
-.status.connecting span, .status.booting span { background: #eab308; }
-.status.error span { background: #ef4444; }
-.stageWrap { position: relative; flex: 1; min-height: 600px; margin: 0 18px; overflow: hidden; border-radius: 20px; background: radial-gradient(circle at 50% 20%, #282d39 0%, #151922 42%, #0c0f15 100%); }
+
+/* Full-viewport avatar stage, nothing else on the page. */
+.shell { position: relative; min-height: 100dvh; background: #000; }
+.stageWrap { position: relative; overflow: hidden; }
+.cleanStage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100dvh;
+  background: transparent;
+}
 .stage { position: absolute; inset: 0; width: 100%; height: 100%; }
-.liveBadge, .speakingBadge { position: absolute; top: 16px; z-index: 3; padding: 7px 10px; border-radius: 9px; font-size: 12px; font-weight: 800; letter-spacing: .08em; backdrop-filter: blur(10px); }
-.liveBadge { left: 16px; background: rgba(225,29,72,.9); }
-.speakingBadge { right: 16px; background: rgba(15,23,42,.72); color: #d7dce7; letter-spacing: 0; font-weight: 600; }
-.controls { display: flex; gap: 10px; padding: 18px; }
-.primary, .secondary, .mic, .composer button { border: 0; border-radius: 13px; padding: 13px 18px; font-weight: 750; }
-.primary { background: #f7f7f8; color: #111318; min-width: 160px; }
-.secondary { background: #202532; color: #e9ecf3; }
-.mic { background: #202532; color: #e9ecf3; flex: 1; }
-.mic.active { background: #b91c1c; }
-.errorBox { margin: 0 18px 18px; padding: 12px 14px; border-radius: 12px; background: rgba(127,29,29,.25); border: 1px solid rgba(239,68,68,.35); color: #fecaca; font-size: 13px; }
-.panel { padding: 22px; display: flex; flex-direction: column; min-height: 0; }
-.transcript { margin: 18px 0; flex: 1; min-height: 320px; max-height: calc(100vh - 290px); overflow-y: auto; padding-right: 4px; }
-.empty { color: #7f8798; line-height: 1.6; }
-.bubble { margin-bottom: 12px; padding: 12px 14px; border-radius: 15px; background: #181d27; }
-.bubble.viewer { margin-left: 26px; }
-.bubble.kimmy { margin-right: 26px; background: #202431; }
-.bubble strong { display: block; font-size: 11px; color: #8f98aa; margin-bottom: 5px; text-transform: uppercase; letter-spacing: .08em; }
-.bubble p { margin: 0; line-height: 1.45; }
-.composer { display: flex; gap: 8px; }
-.composer input { flex: 1; min-width: 0; border-radius: 13px; border: 1px solid #292f3d; background: #0e1117; color: #f7f7f8; padding: 12px 13px; outline: none; }
-.composer input:focus { border-color: #596274; }
-.composer button { background: #f7f7f8; color: #111318; }
-.meta { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 16px; color: #788195; font-size: 11px; }
-.meta span { padding: 8px 9px; border: 1px solid #202532; border-radius: 9px; }
-@media (max-width: 900px) {
-  .shell { grid-template-columns: 1fr; padding: 10px; }
-  .stageWrap { min-height: 68vh; margin: 0 10px; }
-  .panel { min-height: 520px; }
-  .transcript { max-height: 420px; }
-  .topbar { padding: 18px 16px 14px; align-items: flex-start; flex-direction: column; }
-  .controls { padding: 12px 10px 14px; }
-}
 
-/* --------------------------------------------------------------------------
-   TikTok-style seated live-seller composition
-   The avatar remains a normal Spatius render. The crop, foreground desk and
-   portrait camera framing make the seller read as seated behind a product table,
-   matching common TikTok Shop live rooms without copying any brand artwork.
-   -------------------------------------------------------------------------- */
-.sellerStudio {
-  isolation: isolate;
-  aspect-ratio: 9 / 16;
-  width: min(100%, 540px);
-  min-height: 0;
-  max-height: calc(100vh - 220px);
-  margin-inline: auto;
-  background: #f6c9dd;
-}
-.studioBackdrop {
+/* The only component: shows until 5s after going live, then hides. */
+.startLive {
   position: absolute;
-  inset: 0;
-  z-index: 0;
-  overflow: hidden;
-  background:
-    linear-gradient(180deg, rgba(255,255,255,.30), transparent 24%),
-    radial-gradient(circle at 50% 27%, rgba(255,255,255,.95), rgba(255,255,255,.15) 34%, transparent 55%),
-    linear-gradient(145deg, #fce5ef 0%, #f8bad4 52%, #efa2c4 100%);
-}
-.studioBackdrop::before,
-.studioBackdrop::after {
-  content: "";
-  position: absolute;
-  top: 8%;
-  bottom: 24%;
-  width: 9%;
-  border: 1px solid rgba(255,255,255,.5);
-  background: linear-gradient(180deg, rgba(255,255,255,.18), rgba(255,255,255,.03));
-  box-shadow: inset 0 0 28px rgba(255,255,255,.22);
-}
-.studioBackdrop::before { left: 3%; }
-.studioBackdrop::after { right: 3%; }
-.studioGlow {
-  position: absolute;
-  width: 45%;
-  aspect-ratio: 1;
-  top: 18%;
-  border-radius: 50%;
-  filter: blur(40px);
-  opacity: .35;
-  background: #fff;
-}
-.studioGlowLeft { left: -20%; }
-.studioGlowRight { right: -20%; }
-.studioBrand {
-  position: absolute;
-  top: 6.5%;
+  z-index: 5;
   left: 50%;
+  bottom: calc(36px + env(safe-area-inset-bottom));
   transform: translateX(-50%);
-  text-align: center;
-  color: rgba(118,28,73,.88);
-  text-shadow: 0 1px 0 rgba(255,255,255,.55);
-  white-space: nowrap;
-}
-.studioBrand span {
-  display: block;
-  font-size: clamp(24px, 5vw, 44px);
-  font-weight: 900;
-  letter-spacing: -.05em;
-  line-height: .9;
-}
-.studioBrand strong {
-  display: block;
-  margin-top: 7px;
-  font-size: clamp(9px, 1.5vw, 13px);
-  letter-spacing: .34em;
+  border: 0;
+  border-radius: 999px;
+  padding: 16px 44px;
   font-weight: 800;
-}
-.productShelf {
-  position: absolute;
-  top: 34%;
-  width: 19%;
-  height: 29%;
-  display: flex;
-  align-items: end;
-  justify-content: center;
-  gap: 7%;
-  padding: 8% 4%;
-  border-radius: 18px 18px 7px 7px;
-  border: 1px solid rgba(255,255,255,.6);
-  background: rgba(255,255,255,.22);
-  box-shadow: 0 16px 35px rgba(105,20,63,.12), inset 0 1px rgba(255,255,255,.8);
-  backdrop-filter: blur(8px);
-}
-.productShelfLeft { left: 2.5%; }
-.productShelfRight { right: 2.5%; }
-.productShelf i {
-  display: block;
-  width: 24%;
-  border-radius: 4px 4px 2px 2px;
-  background: linear-gradient(180deg, #fff 0 22%, #f3a7c7 23% 100%);
-  box-shadow: 0 5px 12px rgba(77,13,47,.17);
-}
-.productShelf i:nth-child(1) { height: 44%; }
-.productShelf i:nth-child(2) { height: 62%; }
-.productShelf i:nth-child(3) { height: 50%; }
-.avatarCrop {
-  position: absolute;
-  z-index: 2;
-  inset: 13% 9% 14%;
-  overflow: hidden;
-  pointer-events: none;
-}
-.sellerAvatar {
-  position: absolute;
-  inset: 0;
-  transform: translateY(8%) scale(1.30);
-  transform-origin: 50% 58%;
-}
-.sellerDesk {
-  position: absolute;
-  z-index: 4;
-  left: -2%;
-  right: -2%;
-  bottom: -1%;
-  height: 29%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  pointer-events: none;
-}
-.sellerDesk::before {
-  content: "";
-  position: absolute;
-  left: 0;
-  right: 0;
-  top: 22%;
-  height: 14%;
-  border-radius: 50%;
-  background: linear-gradient(180deg, #fff, #fce5ef);
-  box-shadow: 0 13px 28px rgba(100,16,56,.22), inset 0 -3px 9px rgba(205,76,132,.15);
-}
-.deskProducts {
-  position: absolute;
-  z-index: 2;
-  left: 11%;
-  right: 11%;
-  top: 0;
-  height: 44%;
-  display: flex;
-  align-items: flex-end;
-  justify-content: space-around;
-}
-.productMock {
-  display: block;
-  width: 8%;
-  min-width: 16px;
-  border-radius: 5px 5px 3px 3px;
-  background: linear-gradient(180deg, #fff 0 24%, #e78ab4 25% 100%);
-  box-shadow: 0 7px 13px rgba(87,13,49,.23);
-}
-.productMock.tall { height: 78%; }
-.productMock.short { height: 55%; }
-.productMock.bottle {
-  width: 9%;
-  height: 92%;
-  border-radius: 8px 8px 5px 5px;
-  background: linear-gradient(180deg, #f3c9dc 0 17%, #fff 18% 43%, #e780af 44% 100%);
-}
-.deskFront {
-  position: absolute;
-  z-index: 1;
-  left: 4%;
-  right: 4%;
-  bottom: 0;
-  height: 67%;
-  border-radius: 20px 20px 0 0;
-  display: grid;
-  place-items: center;
-  padding-top: 9%;
-  color: rgba(125,32,76,.58);
-  font-size: clamp(13px, 2.5vw, 22px);
-  font-weight: 900;
-  letter-spacing: .22em;
-  background:
-    radial-gradient(circle at 50% 0, rgba(255,255,255,.78), transparent 40%),
-    linear-gradient(180deg, #f9d1e3, #efabc9);
-  border: 1px solid rgba(255,255,255,.55);
-  box-shadow: inset 0 1px rgba(255,255,255,.82);
-}
-.sellerStudio .liveBadge,
-.sellerStudio .speakingBadge { z-index: 6; }
-
-@media (min-width: 901px) {
-  .stageCard { align-items: stretch; }
-  .sellerStudio { flex: 0 1 auto; }
-}
-
-@media (max-width: 900px) {
-  .sellerStudio {
-    width: min(100%, 520px);
-    min-height: auto;
-    max-height: none;
-    margin-inline: auto;
-  }
-  .avatarCrop { inset: 13% 7% 14%; }
-  .sellerAvatar { transform: translateY(8%) scale(1.34); }
+  font-size: 17px;
+  letter-spacing: .02em;
+  background: #f7f7f8;
+  color: #111318;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  white-space: nowrap;
 }

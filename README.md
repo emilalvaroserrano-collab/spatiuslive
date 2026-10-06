@@ -46,7 +46,7 @@ npm install
 npm run dev
 ```
 
-Open `http://localhost:3000`, press **Start Kimmy**, then **Open Viewer Mic**.
+Open `http://localhost:3000` and press **Start Live** — the mic opens on that tap and the button hides itself 5 seconds after Kimmy goes live, leaving just the avatar.
 
 ## 4. Flow
 
@@ -78,8 +78,6 @@ The current build is the realtime avatar foundation. To attach a product catalog
 
 The ZIP intentionally contains **no secret API keys**. If a key was previously pasted into a chat or another exposed location, rotate it before deployment.
 
-## TikTok live-seller framing
+## Stage
 
-The stage now uses a portrait 9:16 live-shopping composition inspired by common TikTok Shop rooms: Kimmy/Nadia is cropped chest/waist-up behind a foreground seller desk, with product-display zones around her. The surrounding studio is intentionally generic and contains no copied brand artwork. Replace the mock product shapes or backdrop with your own product assets when wiring the catalog.
-
-The seated appearance is achieved by camera crop + foreground desk occlusion. If a specific Spatius avatar exposes a dedicated seated/body animation, that can be layered in later; the current layout does not invent an unsupported pose API.
+The stage is a clean portrait 9:16 frame with a transparent background: just the Nadia avatar, no backdrop, desk, or overlay badges. (The SDK canvas is transparent, so she floats over the page.) Speaking state is shown in the status pill up top.
