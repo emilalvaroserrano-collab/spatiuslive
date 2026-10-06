@@ -555,7 +555,7 @@ export default function KimmyAvatar() {
       if (!geminiRef.current) return
       // Never cut her off: only nudge when her turn fully finished.
       if (!turnActive.current && Date.now() - lastAudioAt.current >= AUTOPILOT_IDLE_MS) {
-        sendDirectorLine(`[DIRECTOR: Quiet room — do not stop talking. ${nextAutopilotLine()}]`)
+        sendDirectorLine(`[DIRECTOR: Quiet room — do not stop talking. ${nextAutopilotLine()} Say it fresh in your own words, never repeat your last sentence. Warm, funny, human — like chatting with friends.]`)
       }
     }, 1000)
     // Every minute: make her look at the room and acknowledge the audience.

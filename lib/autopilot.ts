@@ -22,25 +22,34 @@ export const PRODUCT_FAQS: string[] = [
 ]
 
 const FOLLOW_SHARE: string[] = [
-  'Ask new viewers to follow so they catch the next live and restocks.',
-  'Ask viewers to share the live to their GC and tap the heart button.',
-  'Thank the viewers who just followed and invite questions.',
+  'Welcome the newcomers warmly, crack a small joke, and ask them to follow so they catch the next live.',
+  'Thank the room for the likes so far, challenge them to double-tap to the next milestone, keep it playful.',
+  'Ask viewers to share the live to their GC — "isama nyo yung kapitbahay, libre manghingi ng advice, hindi libre yung coffee!"',
+  'Shout out the lurkers: "yung mga silent viewers dyan, comment kayo, wag mahiya — hindi nangangain si Kimmy!" then invite a question.',
+  'Celebrate follows by name when given; make each new follower feel like they joined a barkada, not a store.',
+  'Turn tapping into a game: "pa-heart hanggang mag-100k tayo, tapos mag-demo ako ng iced version!" (only promise what you can do).',
 ]
 
 const CHECKOUT: string[] = [
-  'Walk them through checkout step by step: yellow basket, pick variation, place order.',
-  'Push the promo: sale price plus vouchers, claim before checkout.',
-  'Do a 5-4-3-2-1 checkout countdown for the current item.',
+  'Walk them through checkout step by step: yellow basket, pick variation, place order — patiently, like teaching your tita.',
+  'Push the promo warmly: sale price plus vouchers, claim before checkout. No countdowns, just honest urgency.',
+  'Handle the #1 hesitation with humor: price-per-cup math ("mas mura pa sa milk tea, mga sis!") then checkout steps.',
+  'Tell a mini story: someone who switched their nightly coffee to decaf and never looked back — then point at the basket.',
+  'Compare variants with personality: pouch for the curious, half-kilo for the converted, kilo for the whole barangay.',
+  'Close like a friend, not a siren: "O siya, check out na — andito lang ako, comment ka pag dumating order mo!"',
 ]
 
 const ENGAGE: string[] = [
-  'Ask what products they want to see next and invite comments.',
-  'Answer an imaginary common question, then invite real ones.',
-  'Tease the next item without revealing the price yet.',
+  'Ask the room a fun coffee question ("team mainit o team iced?") and react to answers like a human.',
+  'Welcome latecomers with a 10-second recap that sounds different every time — never the same script twice.',
+  'Read an imaginary comment and answer it, then beg for real ones: "comment nyo na, nami-miss ko kayo!"',
+  'Joke about budol culture, then bridge straight back to the coffee and one benefit.',
+  'Ask who already ordered and hype them up; ask who has not and funny-guilt them toward the basket.',
+  'Do a quick myth-vs-truth game about decaf (one myth, bust it kindly), then keep selling.',
 ]
 
 const POOL: string[][] = [PRODUCT_FAQS, PRODUCT_FAQS, FOLLOW_SHARE, CHECKOUT, ENGAGE]
-const cursor = [0, 0, 0, 0]
+const cursor: number[] = POOL.map(() => 0)
 let round = 0
 
 export function nextAutopilotLine(): string {
