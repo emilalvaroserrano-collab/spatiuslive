@@ -1,0 +1,129 @@
+:root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+* { box-sizing: border-box; }
+html, body { margin: 0; min-height: 100%; background: #000; color: #f7f7f8; }
+body { min-height: 100vh; }
+button { font: inherit; }
+button { cursor: pointer; }
+button:disabled { opacity: .5; cursor: not-allowed; }
+.boot { min-height: 100vh; display: grid; place-items: center; color: #9ca3af; }
+
+/* Seller template stage: the promo artwork is the backdrop and the avatar
+   is composited onto the seller's spot (head/shoulders over the model's).
+   Tweak AVATAR_ZONE below to reposition her. */
+.shell { position: relative; min-height: 100dvh; background: #000; }
+.stageWrap { position: relative; overflow: hidden; }
+.sellerStage {
+  position: absolute;
+  inset: 0;
+  width: min(100%, calc(100dvh * 9 / 16));
+  aspect-ratio: 9 / 16;
+  margin-inline: auto;
+  background: url('/template-seller.png') center top / cover no-repeat, #000;
+}
+.avatarLayer {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 6%;
+  aspect-ratio: 1 / 1;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  z-index: 1;
+}
+.avatarLayer:active { cursor: grabbing; }
+.resizeHandle {
+  position: absolute;
+  width: 22px;
+  height: 22px;
+  border-radius: 7px;
+  background: #f7f7f8;
+  box-shadow: 0 2px 10px rgba(0,0,0,.5);
+  z-index: 6;
+  opacity: 0;
+  transition: opacity .15s;
+  touch-action: none;
+}
+.avatarLayer:hover .resizeHandle { opacity: 1; }
+.productDrift:hover .resizeHandle { opacity: 1; }
+.resizeHandle.tl { top: 8px; left: 8px; cursor: nwse-resize; }
+.resizeHandle.tr { top: 8px; right: 8px; cursor: nesw-resize; }
+.resizeHandle.bl { bottom: 8px; left: 8px; cursor: nesw-resize; }
+.resizeHandle.br { bottom: 8px; right: 8px; cursor: nwse-resize; }
+.avatarLayer .stage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: transparent;
+  /* transform (pan/zoom) is applied inline from the pose state */
+}
+
+/* Product lineup strip: slow continuous left-right drift above the counter. */
+.productDrift {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  right: 0;
+  top: 2%;
+  height: 9%;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  overflow: visible;
+}
+.productDrift:active { cursor: grabbing; }
+.productDrift img {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
+  animation: blinkCycle 12s ease-in-out infinite;
+}
+/* Visible 10s, gone 2s, on a 12s loop. Paused while interacting so the
+   strip is always solid and grabbable under the cursor. */
+@keyframes blinkCycle {
+  0%, 81% { opacity: 1; }
+  84%, 97% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.productDrift:hover img,
+.productDrift:active img {
+  animation: none;
+  opacity: 1;
+}
+/* Foreground: the template's own counter/products, pixel-aligned with the
+   backdrop (same box + same background spec). Hard edge at the marble top
+   so Kimmy is cleanly occluded behind it — no fade band. */
+.counterFront {
+  position: absolute;
+  inset: 0;
+  z-index: 4;
+  pointer-events: none;
+  background: url('/template-seller.png') center top / cover no-repeat;
+  -webkit-mask-image: linear-gradient(to bottom, transparent 68%, black 68.6%);
+  mask-image: linear-gradient(to bottom, transparent 68%, black 68.6%);
+}
+
+/* The only component: shows until 5s after going live, then hides. */
+.startLive {
+  position: absolute;
+  z-index: 5;
+  left: 50%;
+  bottom: calc(36px + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  border: 0;
+  border-radius: 999px;
+  padding: 16px 44px;
+  font-weight: 800;
+  font-size: 17px;
+  letter-spacing: .02em;
+  background: #f7f7f8;
+  color: #111318;
+  box-shadow: 0 12px 40px rgba(0,0,0,.45);
+  white-space: nowrap;
+}
