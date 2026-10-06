@@ -13,7 +13,7 @@ import {
 } from '@spatius/avatarkit'
 import { KIMMY_SYSTEM_PROMPT } from '@/lib/kimmy-prompt'
 import { LIVE_SELLING_KNOWLEDGE } from '@/lib/live-selling-knowledge'
-import { AUTOPILOT_IDLE_MS, nextAutopilotLine } from '@/lib/autopilot'
+import { AUDIENCE_MS, AUTOPILOT_IDLE_MS, nextAutopilotLine } from '@/lib/autopilot'
 import { arrayBufferToBase64, base64ToArrayBuffer, float32ToPcm16, resampleMono } from '@/lib/audio'
 
 type AppConfig = {
@@ -35,7 +35,28 @@ const VIEWER_MIC_ENABLED = false
 type Pose = { x: number; y: number; s: number } // pan fractions + zoom
 const DEFAULT_POSE: Pose = { x: 0, y: 0.04, s: 1.0 }
 const POSE_KEY = 'kimmy-avatar-pose-v4'
+const PROD_POSE_KEY = 'kimmy-product-pose-v2'
+const DEFAULT_PROD_POSE: Pose = { x: 0, y: 0, s: 1 }
 const clampNum = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v))
+
+function loadPose(key: string, fallback: Pose): Pose {
+  try {
+    const raw = localStorage.getItem(key)
+    if (raw) {
+      const p = JSON.parse(raw)
+      if (typeof p?.s === 'number') {
+        return {
+          x: clampNum(Number(p.x) || 0, -0.6, 0.6),
+          y: clampNum(Number(p.y) || 0, -0.6, 0.6),
+          s: clampNum(p.s, 0.5, 3),
+        }
+      }
+    }
+  } catch {
+    // corrupted pose — fall through to default
+  }
+  return fallback
+}
 
 class MicCapture {
   context: AudioContext | null = null
@@ -90,10 +111,16 @@ export default function KimmyAvatar() {
   const firstFrameRef = useRef<Promise<void> | null>(null)
   const lastAudioAt = useRef(0)
   const productKnowledge = useRef('')
-  const tiktokRef = useRef<{ es: EventSource | null; timer: ReturnType<typeof setInterval> | null }>({
+  const tiktokRef = useRef<{
+    es: EventSource | null
+    timer: ReturnType<typeof setInterval> | null
+    audience: ReturnType<typeof setInterval> | null
+  }>({
     es: null,
     timer: null,
+    audience: null,
   })
+  const statsRef = useRef({ viewers: 0, likes: 0 })
 
   const [config, setConfig] = useState<AppConfig | null>(null)
   const [status, setStatus] = useState<Status>('booting')
@@ -183,7 +210,7 @@ export default function KimmyAvatar() {
     }
   }, [])
 
-  // Persist pose between visits.
+  // Persist avatar pose between visits.
   useEffect(() => {
     try {
       localStorage.setItem(POSE_KEY, JSON.stringify(pose))
@@ -191,6 +218,109 @@ export default function KimmyAvatar() {
       // storage unavailable — pose just won't persist
     }
   }, [pose])
+
+  // Product strip gets the same treatment: drag to move, wheel/pinch to
+  // scale, double-click to reset. Pan is in raw pixels (percentages of a
+  // thin strip can't reach the whole frame); scale 0.5–3. Persisted.
+  const prodRef = useRef<HTMLDivElement>(null)
+  const [prodPose, setProdPose] = useState<Pose>(() => {
+    try {
+      const raw = localStorage.getItem(PROD_POSE_KEY)
+      if (raw) {
+        const p = JSON.parse(raw)
+        if (typeof p?.s === 'number') {
+          return {
+            x: clampNum(Number(p.x) || 0, -1200, 1200),
+            y: clampNum(Number(p.y) || 0, -1200, 1200),
+            s: clampNum(p.s, 0.5, 3),
+          }
+        }
+      }
+    } catch {
+      // corrupted pose — fall through to default
+    }
+    return DEFAULT_PROD_POSE
+  })
+  useEffect(() => {
+    try {
+      localStorage.setItem(PROD_POSE_KEY, JSON.stringify(prodPose))
+    } catch {
+      // storage unavailable — pose just won't persist
+    }
+  }, [prodPose])
+  useEffect(() => {
+    const el = prodRef.current
+    if (!el) return
+    const pointers = new Map<number, { x: number; y: number }>()
+    let lastPinch = 0
+
+    const onDown = (e: PointerEvent) => {
+      // Corner handles have their own drag logic below.
+      if ((e.target as HTMLElement)?.closest?.('.resizeHandle')) return
+      el.setPointerCapture(e.pointerId)
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()]
+        lastPinch = Math.hypot(a.x - b.x, a.y - b.y)
+      }
+    }
+    const onMove = (e: PointerEvent) => {
+      const prev = pointers.get(e.pointerId)
+      if (!prev) return
+      pointers.set(e.pointerId, { x: e.clientX, y: e.clientY })
+      if (pointers.size === 2) {
+        const [a, b] = [...pointers.values()]
+        const d = Math.hypot(a.x - b.x, a.y - b.y)
+        if (lastPinch > 0 && d > 0) {
+          const ratio = d / lastPinch
+          setProdPose(p => ({ ...p, s: clampNum(p.s * ratio, 0.5, 3) }))
+        }
+        lastPinch = d
+        return
+      }
+      const dxRaw = e.clientX - prev.x
+      const dyRaw = e.clientY - prev.y
+      // Keep the strip inside the stage: clamp the step so its box never
+      // leaves the backdrop (if zoomed larger than the stage, center it).
+      const stage = el.parentElement?.getBoundingClientRect()
+      const r = el.getBoundingClientRect()
+      let dx = dxRaw
+      let dy = dyRaw
+      if (stage && r.width && r.height) {
+        const minDx = stage.left - r.left
+        const maxDx = stage.right - r.right
+        const minDy = stage.top - r.top
+        const maxDy = stage.bottom - r.bottom
+        dx = minDx <= maxDx ? clampNum(dxRaw, minDx, maxDx) : (stage.left + stage.right) / 2 - (r.left + r.right) / 2
+        dy = minDy <= maxDy ? clampNum(dyRaw, minDy, maxDy) : (stage.top + stage.bottom) / 2 - (r.top + r.bottom) / 2
+      }
+      setProdPose(p => ({ x: p.x + dx, y: p.y + dy, s: p.s }))
+    }
+    const onUp = (e: PointerEvent) => {
+      pointers.delete(e.pointerId)
+      if (pointers.size < 2) lastPinch = 0
+    }
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault()
+      setProdPose(p => ({ ...p, s: clampNum(p.s * Math.exp(-e.deltaY * 0.0012), 0.5, 3) }))
+    }
+    const onDbl = () => setProdPose(DEFAULT_PROD_POSE)
+
+    el.addEventListener('pointerdown', onDown)
+    el.addEventListener('pointermove', onMove)
+    el.addEventListener('pointerup', onUp)
+    el.addEventListener('pointercancel', onUp)
+    el.addEventListener('wheel', onWheel, { passive: false })
+    el.addEventListener('dblclick', onDbl)
+    return () => {
+      el.removeEventListener('pointerdown', onDown)
+      el.removeEventListener('pointermove', onMove)
+      el.removeEventListener('pointerup', onUp)
+      el.removeEventListener('pointercancel', onUp)
+      el.removeEventListener('wheel', onWheel)
+      el.removeEventListener('dblclick', onDbl)
+    }
+  }, [])
 
   // Corner-handle resize: pull away from center to grow, push in to shrink.
   const resizeRef = useRef<{ id: number | null; startDist: number; startS: number }>({
@@ -226,6 +356,41 @@ export default function KimmyAvatar() {
   }
   const onCornerUp = (e: React.PointerEvent<HTMLDivElement>) => {
     if (resizeRef.current.id === e.pointerId) resizeRef.current.id = null
+  }
+  // Corner-handle resize for the product strip: same pull-to-scale behavior.
+  const prodResizeRef = useRef<{ id: number | null; startDist: number; startS: number }>({
+    id: null,
+    startDist: 0,
+    startS: 1,
+  })
+  const onProdCornerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation()
+    const el = prodRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const d = Math.hypot(
+      e.clientX - (rect.left + rect.width / 2),
+      e.clientY - (rect.top + rect.height / 2),
+    )
+    if (!d) return
+    prodResizeRef.current = { id: e.pointerId, startDist: d, startS: prodPose.s }
+    e.currentTarget.setPointerCapture(e.pointerId)
+  }
+  const onProdCornerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const r = prodResizeRef.current
+    if (r.id !== e.pointerId) return
+    const el = prodRef.current
+    if (!el) return
+    const rect = el.getBoundingClientRect()
+    const d = Math.hypot(
+      e.clientX - (rect.left + rect.width / 2),
+      e.clientY - (rect.top + rect.height / 2),
+    )
+    if (d <= 0) return
+    setProdPose(p => ({ ...p, s: clampNum((r.startS * d) / r.startDist, 0.5, 3) }))
+  }
+  const onProdCornerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (prodResizeRef.current.id === e.pointerId) prodResizeRef.current.id = null
   }
 
   // Auto-hide the button 5s after going live; show it again otherwise.
@@ -338,6 +503,10 @@ export default function KimmyAvatar() {
       clearInterval(tiktokRef.current.timer)
       tiktokRef.current.timer = null
     }
+    if (tiktokRef.current.audience) {
+      clearInterval(tiktokRef.current.audience)
+      tiktokRef.current.audience = null
+    }
   }, [])
 
   // TikTok live comments/status → interactive prompts for Kimmy's topics.
@@ -362,6 +531,10 @@ export default function KimmyAvatar() {
         } else if (data.type === 'share') {
           sendDirectorLine(`[TikTok: @${data.user} shared the live! Thank them and remind everyone to share. Keep it to one line, then back to selling.]`, { defer: true })
         } else if (data.type === 'stats') {
+          statsRef.current = {
+            viewers: Number(data.viewers) || 0,
+            likes: Number(data.likes) || 0,
+          }
           sendDirectorLine(`[TikTok live status: ${data.viewers} viewers, ${data.likes} total likes. If there is a milestone worth celebrating, celebrate it in one line; otherwise just keep selling.]`, { defer: true })
         } else if (data.type === 'liveEnd') {
           sendDirectorLine('[DIRECTOR: The TikTok live just ended. Thank everyone, do a final checkout push, and close the show warmly.]')
@@ -376,6 +549,7 @@ export default function KimmyAvatar() {
   // her the next autopilot topic (FAQ, follow/share, checkout, engagement).
   const startAutopilot = useCallback(() => {
     if (tiktokRef.current.timer) clearInterval(tiktokRef.current.timer)
+    if (tiktokRef.current.audience) clearInterval(tiktokRef.current.audience)
     sendDirectorLine('[DIRECTOR: You just went live on TikTok. Open the show with energy: name the Luxe Slim Caffe Macchiato Decaf, its 3 hooks (decaf anytime, slimming + glow actives, stevia-sweetened smooth taste), and invite everyone to stay.]')
     tiktokRef.current.timer = setInterval(() => {
       if (!geminiRef.current) return
@@ -383,7 +557,20 @@ export default function KimmyAvatar() {
       if (!turnActive.current && Date.now() - lastAudioAt.current >= AUTOPILOT_IDLE_MS) {
         sendDirectorLine(`[DIRECTOR: Quiet room — do not stop talking. ${nextAutopilotLine()}]`)
       }
-    }, 2000)
+    }, 1000)
+    // Every minute: make her look at the room and acknowledge the audience.
+    // Deferred when she's mid-turn, so it never interrupts — just waits.
+    tiktokRef.current.audience = setInterval(() => {
+      if (!geminiRef.current) return
+      const { viewers, likes } = statsRef.current
+      const room = viewers > 0
+        ? `right now ${viewers} people are watching with ${likes} total likes`
+        : 'people are watching right now'
+      sendDirectorLine(
+        `[DIRECTOR: audience check — ${room}. Look at the camera, greet and acknowledge the viewers warmly so they feel seen, then roll straight back into selling the coffee. One or two lines, then keep going.]`,
+        { defer: true },
+      )
+    }, AUDIENCE_MS)
   }, [sendDirectorLine])
 
   // Stop feed/autopilot on unmount.
@@ -395,6 +582,10 @@ export default function KimmyAvatar() {
       if (feed.timer) {
         clearInterval(feed.timer)
         feed.timer = null
+      }
+      if (feed.audience) {
+        clearInterval(feed.audience)
+        feed.audience = null
       }
     }
   }, [])
@@ -558,6 +749,27 @@ export default function KimmyAvatar() {
           ))}
         </div>
         <div className="counterFront" aria-hidden="true" />
+        <div
+          ref={prodRef}
+          className="productDrift"
+          aria-hidden="true"
+          style={{
+            transform: `translate(${prodPose.x}px, ${prodPose.y}px) scale(${prodPose.s})`,
+            transformOrigin: '50% 50%',
+          }}
+        >
+          <img src="/product-lineup.png" alt="" draggable={false} />
+          {(['tl', 'tr', 'bl', 'br'] as const).map(corner => (
+            <div
+              key={corner}
+              className={`resizeHandle ${corner}`}
+              onPointerDown={onProdCornerDown}
+              onPointerMove={onProdCornerMove}
+              onPointerUp={onProdCornerUp}
+              onPointerCancel={onProdCornerUp}
+            />
+          ))}
+        </div>
       </div>
       {!hideButton && (
         <button

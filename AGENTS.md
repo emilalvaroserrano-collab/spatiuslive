@@ -36,7 +36,7 @@ Next.js 16 + React 19 + TypeScript strict. Single-page realtime avatar; no tests
 
 - `app/api/tiktok/events/route.ts` (SSE, `runtime = 'nodejs'`) watches the live room via `tiktok-live-connector` (`TikTokLiveConnection`, `WebcastEvent.*`) and broadcasts `chat | gift | follow | share | stats | liveEnd`. Needs `TIKTOK_USERNAME`; optional `TIKTOK_SESSION_ID` cookie. Without a username it returns 503 and only the autopilot runs.
 - Browser (`KimmyAvatar.tsx`) turns feed events into `[TikTok ...]` director lines via `sendRealtimeInput` (text, not audio) — comments become her conversational topics; follow/share/gift lines tell her to thank by name; `stats` (viewers/likes every 30 s) only gets a reaction on real milestones.
-- Watchdog: `lastAudioAt` updates on every Gemini audio chunk; every 2 s, if quiet for `AUTOPILOT_IDLE_MS` (2 s, `lib/autopilot.ts`), she gets the next round-robin line, weighted toward product (`PRODUCT_FAQS ×2 → FOLLOW_SHARE → CHECKOUT → ENGAGE`). Opening line is sent right after connect.
+- Watchdog: `lastAudioAt` updates on every Gemini audio chunk; every 1 s, if quiet for `AUTOPILOT_IDLE_MS` (1 s, `lib/autopilot.ts`) and no turn is active, she gets the next round-robin line, weighted toward product (`PRODUCT_FAQS ×2 → FOLLOW_SHARE → CHECKOUT → ENGAGE`). Opening line is sent right after connect.
 - Product facts live in `product-knowledge/coffee-luxxe.md`, served by `GET /api/product-knowledge` and appended to the system prompt at connect — edit the .md, not code, to change facts. `PRODUCT_FAQS` mirrors it for the autopilot rotation.
 
 ## Gotchas

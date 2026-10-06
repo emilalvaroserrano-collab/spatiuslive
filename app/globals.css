@@ -45,6 +45,7 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   touch-action: none;
 }
 .avatarLayer:hover .resizeHandle { opacity: 1; }
+.productDrift:hover .resizeHandle { opacity: 1; }
 .resizeHandle.tl { top: 8px; left: 8px; cursor: nwse-resize; }
 .resizeHandle.tr { top: 8px; right: 8px; cursor: nesw-resize; }
 .resizeHandle.bl { bottom: 8px; left: 8px; cursor: nesw-resize; }
@@ -58,6 +59,43 @@ button:disabled { opacity: .5; cursor: not-allowed; }
   /* transform (pan/zoom) is applied inline from the pose state */
 }
 
+/* Product lineup strip: slow continuous left-right drift above the counter. */
+.productDrift {
+  position: absolute;
+  z-index: 6;
+  left: 0;
+  right: 0;
+  top: 2%;
+  height: 9%;
+  pointer-events: auto;
+  touch-action: none;
+  cursor: grab;
+  overflow: visible;
+}
+.productDrift:active { cursor: grabbing; }
+.productDrift img {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  height: 100%;
+  width: auto;
+  max-width: none;
+  transform: translateX(-50%);
+  filter: drop-shadow(0 6px 14px rgba(0,0,0,.45));
+  animation: blinkCycle 12s ease-in-out infinite;
+}
+/* Visible 10s, gone 2s, on a 12s loop. Paused while interacting so the
+   strip is always solid and grabbable under the cursor. */
+@keyframes blinkCycle {
+  0%, 81% { opacity: 1; }
+  84%, 97% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.productDrift:hover img,
+.productDrift:active img {
+  animation: none;
+  opacity: 1;
+}
 /* Foreground: the template's own counter/products, pixel-aligned with the
    backdrop (same box + same background spec). Hard edge at the marble top
    so Kimmy is cleanly occluded behind it — no fade band. */

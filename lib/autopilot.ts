@@ -5,7 +5,8 @@
 // PRODUCT_FAQS is the only product-specific part — replace the placeholders
 // with real Q&A from the catalog (or generate them from a product feed).
 
-export const AUTOPILOT_IDLE_MS = 2_000
+export const AUTOPILOT_IDLE_MS = 1_000
+export const AUDIENCE_MS = 60_000
 
 export const PRODUCT_FAQS: string[] = [
   'Magkano? State the exact variant prices: pouch ₱399, half-kilo tub ₱999, kilo pouch ₱1,899 — price first, then push checkout. If the yellow basket shows a different live price, quote the basket.',
