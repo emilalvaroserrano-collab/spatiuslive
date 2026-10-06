@@ -1,83 +1,85 @@
-# SpatiusLive — Nadia realtime seller
+# Kimmy — Spatius Nadia + Gemini Live
 
-Realtime Nadia avatar starter using **Spatius AvatarKit + LiveKit Agents**, with a Vite/React frontend ready for Vercel.
+Realtime Filipina live-seller avatar built with:
 
-## What is already wired
-
-- Nadia Spatius App ID: `app_muw1329w_1n3by9r`
-- Nadia Avatar ID: `9078fde3-8e55-4311-a8d6-7740185b5b0d`
-- Browser-side AvatarKit RTC renderer
-- Vercel `/api/token` function using short-lived LiveKit JWTs
-- Explicit dispatch to the `nadia-seller` LiveKit agent
-- Reconnect handling for stalled avatar motion
-- Microphone enable/disable for realtime conversation
-- 9:16 seller-stage UI with a placeholder product panel
-- Server secrets excluded from the browser bundle and Git
+- **Spatius AvatarKit Direct Mode** for Nadia rendering, lip sync, and motion
+- **Gemini Live** for realtime listening, reasoning, and native voice
+- **Next.js** for the UI plus server-only token minting
 
 ## Architecture
 
 ```text
-Browser / TikTok UI
-       |
-       | POST /api/token
-       v
-Vercel Function ---- LiveKit signed room token
-       |
-       v
-LiveKit Room <---- persistent Nadia agent worker
-       |                    |
-       |                    +-- Gemini realtime voice model
-       |                    +-- Spatius plugin -> Motion Server
-       v
-AvatarKit RTC adapter -> local Nadia render + synchronized audio
+Viewer microphone (PCM16 16 kHz)
+        ↓
+Gemini Live — Kimmy persona + native voice
+        ↓ PCM16 24 kHz
+Spatius AvatarController.send()
+        ↓
+Nadia rendering + synced audio/motion
 ```
 
-## Deploy the web app to Vercel
+Both long-lived API keys stay on the Next.js server. The browser receives only short-lived session credentials.
 
-Import this GitHub repository into Vercel. Framework is Vite and `vercel.json` is already included.
+## 1. Requirements
 
-Set these **server-side Vercel Environment Variables**:
+- Node.js 20+
+- A Spatius App ID/API key and avatar ID
+- A Gemini API key with Live API access
 
-```env
-LIVEKIT_URL=wss://your-project.livekit.cloud
-LIVEKIT_API_KEY=...
-LIVEKIT_API_SECRET=...
-LIVEKIT_AGENT_NAME=nadia-seller
+## 2. Configure
+
+```bash
+cp .env.example .env.local
 ```
 
-No Spatius API key belongs in Vercel's client-side `VITE_*` variables. Nadia's App ID and Avatar ID are already client-safe defaults in `src/App.tsx`; optional overrides are documented in `.env.example`.
+Fill in `SPATIUS_API_KEY` and `GEMINI_API_KEY`. The provided `.env.example` already contains the selected public IDs:
 
-## Run locally
+- Spatius App ID: `app_muw59ima_rgef1v`
+- Nadia Avatar ID: `9078fde3-8e55-4311-a8d6-7740185b5b0d`
+
+Do **not** put either secret key into a `NEXT_PUBLIC_*` variable.
+
+## 3. Run
 
 ```bash
 npm install
 npm run dev
 ```
 
-For local `/api/token`, either run through Vercel CLI (`vercel dev`) or point `VITE_TOKEN_ENDPOINT` at a compatible token endpoint.
+Open `http://localhost:3000`, press **Start Kimmy**, then **Open Viewer Mic**.
 
-## Agent worker
+## 4. Flow
 
-The Vercel deployment cannot replace the long-running LiveKit Agents worker. Deploy `backend/agent.py` to LiveKit Agents Cloud, a VPS, or another persistent runtime and give it the server-side keys in `backend/.env.example`.
+1. `/api/spatius/session-token` exchanges the server-only Spatius key for a short-lived Session Token.
+2. Browser initializes AvatarKit in `DrivingServiceMode.direct` at PCM16 mono / 24 kHz.
+3. Nadia is loaded into the stage and `controller.start()` connects Motion Server.
+4. `/api/gemini/token` uses the server-only Gemini key to mint a one-use ephemeral Live token.
+5. Browser connects directly to `gemini-3.8-live` with the Kimmy system prompt and Kore voice.
+6. Viewer mic is converted to PCM16 / 16 kHz and streamed into Gemini.
+7. Gemini native audio (24 kHz PCM) is sent directly to `AvatarController.send()`.
+8. Gemini interruptions call `controller.interrupt()` so Nadia stops stale playback immediately.
 
-See [`backend/README.md`](backend/README.md).
+## 5. Customize Kimmy
+
+Edit `lib/kimmy-prompt.ts`.
+
+Change Gemini voice/model in `.env.local`:
+
+```env
+GEMINI_LIVE_MODEL=gemini-3.8-live
+GEMINI_VOICE=Kore
+```
+
+## 6. Product data
+
+The current build is the realtime avatar foundation. To attach a product catalog, inject verified product context into `KIMMY_SYSTEM_PROMPT` or add Gemini function tools for your product/price/stock backend. Keep price, stock, promo and shipping data authoritative rather than hard-coded into the persona.
 
 ## Security
 
-- Never commit `SPATIUS_API_KEY`, `LIVEKIT_API_SECRET`, or `GOOGLE_API_KEY`.
-- The Spatius key previously pasted into chat should be rotated before use.
-- Only short-lived LiveKit participant tokens are returned to the browser.
+The ZIP intentionally contains **no secret API keys**. If a key was previously pasted into a chat or another exposed location, rotate it before deployment.
 
-## Next seller integration
+## TikTok live-seller framing
 
-The current app is the avatar/runtime layer. The next production step is:
+The stage now uses a portrait 9:16 live-shopping composition inspired by common TikTok Shop rooms: Kimmy/Nadia is cropped chest/waist-up behind a foreground seller desk, with product-display zones around her. The surrounding studio is intentionally generic and contains no copied brand artwork. Replace the mock product shapes or backdrop with your own product assets when wiring the catalog.
 
-```text
-TikTok comments/events
- -> seller router / product state
- -> generated short reply
- -> agent/TTS
- -> Spatius Nadia avatar
- -> product/video compositor
- -> TikTok Live output
-```
+The seated appearance is achieved by camera crop + foreground desk occlusion. If a specific Spatius avatar exposes a dedicated seated/body animation, that can be layered in later; the current layout does not invent an unsupported pose API.
