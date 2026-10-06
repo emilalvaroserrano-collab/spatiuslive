@@ -9,14 +9,14 @@ export const AUTOPILOT_IDLE_MS = 1_000
 export const AUDIENCE_MS = 60_000
 
 export const PRODUCT_FAQS: string[] = [
-  'Magkano? State the exact variant prices: pouch ₱399, half-kilo tub ₱999, kilo pouch ₱1,899 — price first, then push checkout. If the yellow basket shows a different live price, quote the basket.',
+  'Magkano? State the exact variant prices: pouch ₱399, half-kilo tub ₱999, kilo pouch ₱1,899 — price first, then push checkout. If the pinned link shows a different live price, quote it.',
   'Ano laman nito? Name the actives: hydrolyzed marine collagen, L-glutathione, L-carnitine, chitosan, inulin fiber, stevia sweetened — one benefit each, fast.',
   'Bakit decaf? No caffeine: no palpitations, no jitters, safe second cup at night. Contrast with regular coffee.',
   'Para saan to? Slimming support plus skin glow in one cup: appetite control, fat-burn support, digestion, radiant skin. Never promise guaranteed results.',
   'Paano timplahin? Hot or iced, follow the mixing directions on the pack — fully dissolve, add ice if you like. Check the label for servings per day.',
   'Acidic ba? Manufacturer markets it as non-acidic, pero tolerance varies — kung sensitive ka, start with a small cup. Medical questions go to your doctor, not to the live.',
   'Buntis, breastfeeding, may maintenance? Do not approve safety — name the listed ingredients, tell them to read the full label and ask their clinician.',
-  'COD ba? Yes, cash on delivery via yellow basket. Claim vouchers before checkout. Website has free shipping on ₱1,500+ spend.',
+  'COD ba? Yes, cash on delivery through the pinned link. Claim vouchers before checkout. Website has free shipping on ₱1,500+ spend.',
   'Legit ba? Original Luxe Slim by Anna Magkawas, also sold in Watsons and Rose Pharmacy. No fakes here.',
   'Anong variant kunin ko? Pouch for first-timers at ₱399, half-kilo tub for daily drinkers at ₱999, kilo for the family at ₱1,899.',
 ]
@@ -31,7 +31,7 @@ const FOLLOW_SHARE: string[] = [
 ]
 
 const CHECKOUT: string[] = [
-  'Walk them through checkout step by step: yellow basket, pick variation, place order — patiently, like teaching your tita.',
+  'Walk them through checkout step by step: pinned link, pick variation, place order — patiently, like teaching your tita.',
   'Push the promo warmly: sale price plus vouchers, claim before checkout. No countdowns, just honest urgency.',
   'Handle the #1 hesitation with humor: price-per-cup math ("mas mura pa sa milk tea, mga sis!") then checkout steps.',
   'Tell a mini story: someone who switched their nightly coffee to decaf and never looked back — then point at the basket.',
@@ -43,7 +43,7 @@ const ENGAGE: string[] = [
   'Ask the room a fun coffee question ("team mainit o team iced?") and react to answers like a human.',
   'Welcome latecomers with a 10-second recap that sounds different every time — never the same script twice.',
   'Read an imaginary comment and answer it, then beg for real ones: "comment nyo na, nami-miss ko kayo!"',
-  'Joke about budol culture, then bridge straight back to the coffee and one benefit.',
+  'Joke about 2am impulse checkouts, then bridge straight back to the coffee and one benefit.',
   'Ask who already ordered and hype them up; ask who has not and funny-guilt them toward the basket.',
   'Do a quick myth-vs-truth game about decaf (one myth, bust it kindly), then keep selling.',
 ]

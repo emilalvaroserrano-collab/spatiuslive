@@ -28,6 +28,9 @@ let viewers = 0
 let likes = 0
 let statsTimer: ReturnType<typeof setInterval> | null = null
 let lastSocialAt = 0
+let lastGiftAt = 0
+let giftQueue: string[] = []
+const GIFT_WINDOW_MS = 120_000
 
 function broadcast(event: FeedEvent) {
   listeners.forEach((fn) => {
@@ -43,21 +46,43 @@ function nickOf(user: any): string {
   return String(user?.nickname || user?.uniqueId || 'viewer').slice(0, 40)
 }
 
+// TikTok holds LIVE hosts responsible for everything said on stream —
+// including comments read aloud by third-party tools. Drop anything unsafe
+// before Kimmy can see it: links, phone numbers, emails, sexual content,
+// slurs. Mild banter passes; the persona rules handle the rest gracefully.
+const UNSAFE_PATTERNS: RegExp[] = [
+  /https?:\/\/|www\.|\.\w{2,}\/\S*|t\.me\/\S+|bit\.ly/i,
+  /\b[\w.+-]+@[\w-]+\.[\w.]+\b/,
+  /(\+?\d[\d\s-]{6,}\d)/,
+  /\b(putang\s?ina|putangina|kingina|kinangina|punyeta|leche|tarantado|t*ngina|gago ka|bobo ka|ulol|burat|tite|puke|pekpek|kantot|jakol|salsal|boso|bosoero|porn|xxx|nude|hubad|rape|patayin|papatayin|mamatay ka|suntukan|bugbog|shit|fuck|bitch|slut|whore|nigga|retard|kill yourself|kys)\b/i,
+]
+
+function isUnsafeComment(text: string): boolean {
+  return UNSAFE_PATTERNS.some((re) => re.test(text))
+}
+
 function wireConnection(c: TikTokLiveConnection) {
   c.on(WebcastEvent.CHAT, (msg: any) => {
     const text = String(msg?.comment || '').trim()
-    if (!text) return
+    if (!text || isUnsafeComment(text)) return
     broadcast({ type: 'chat', user: nickOf(msg?.user), text: text.slice(0, 200) })
   })
 
+  // Gifts are batched: one thanks per burst, never one per gift, so Kimmy
+  // doesn't repeat herself when gifts rain in.
   c.on(WebcastEvent.GIFT, (msg: any) => {
-    if (msg?.repeatEnd === false) return // only announce the final count
-    broadcast({
-      type: 'gift',
-      user: nickOf(msg?.user),
-      gift: String(msg?.extendedGiftInfo?.name || msg?.giftName || 'a gift').slice(0, 60),
-      count: Number(msg?.repeatEnd ? msg?.repeatCount || 1 : 1) || 1,
-    })
+    if (msg?.repeatEnd === false) return // only count the final total
+    const who = nickOf(msg?.user)
+    const what = String(msg?.extendedGiftInfo?.name || msg?.giftName || 'a gift').slice(0, 60)
+    const count = Number(msg?.repeatEnd ? msg?.repeatCount || 1 : 1) || 1
+    giftQueue.push(count > 1 ? `@${who} (${what} x${count})` : `@${who} (${what})`)
+    const now = Date.now()
+    if (now - lastGiftAt < GIFT_WINDOW_MS) return
+    lastGiftAt = now
+    const batch = giftQueue.splice(0)
+    const names = batch.slice(0, 3).join(', ')
+    const extra = batch.length > 3 ? ` and ${batch.length - 3} more` : ''
+    broadcast({ type: 'gift', user: `${names}${extra}`, gift: 'gifts', count: batch.length })
   })
 
   // Follows + shares arrive as social events; throttle so Kimmy isn't spammed.

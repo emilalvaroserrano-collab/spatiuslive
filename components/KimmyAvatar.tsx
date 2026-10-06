@@ -94,6 +94,18 @@ class MicCapture {
   }
 }
 
+function reportError(where: string, message: string) {
+  try {
+    fetch('/api/client-log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ where, message }),
+    })
+  } catch {
+    // reporting must never break the app
+  }
+}
+
 function collectAudio(message: LiveServerMessage): string[] {
   const parts = message.serverContent?.modelTurn?.parts || []
   return parts.flatMap((part: any) => part?.inlineData?.data ? [part.inlineData.data as string] : [])
@@ -458,6 +470,7 @@ export default function KimmyAvatar() {
         view.controller.onError = (e: Error) => {
           setError(e.message)
           setStatus('error')
+          reportError('spatius.onError', `${(e as any)?.code || ''} ${e.message}`)
         }
         setConfig(cfg)
         setStatus('ready')
@@ -465,6 +478,7 @@ export default function KimmyAvatar() {
         if (!cancelled) {
           setError(e?.message || String(e))
           setStatus('error')
+          reportError('boot', e?.message || String(e))
         }
       }
     })()
@@ -525,7 +539,7 @@ export default function KimmyAvatar() {
         if (data.type === 'chat' && data.text) {
           sendDirectorLine(`[TikTok live comment from @${data.user}]: ${data.text}`)
         } else if (data.type === 'gift') {
-          sendDirectorLine(`[TikTok: @${data.user} sent ${data.gift} x${data.count}! Thank them excitedly by name, then tie it back to the product.]`)
+          sendDirectorLine(`[TikTok gift burst from ${data.user}! Thank them all together by name in ONE line, then immediately back to the coffee. Never mention these gifts again.]`)
         } else if (data.type === 'follow') {
           sendDirectorLine(`[TikTok: @${data.user} just followed! Welcome them warmly by name and invite a question.]`, { defer: true })
         } else if (data.type === 'share') {
@@ -707,6 +721,7 @@ export default function KimmyAvatar() {
           onerror: (e) => {
             setError(e.message || 'Gemini Live error')
             setStatus('error')
+            reportError('gemini.onerror', e.message || 'Gemini Live error')
           },
           onclose: () => {
             void micRef.current.stop()
@@ -722,6 +737,7 @@ export default function KimmyAvatar() {
     } catch (e: any) {
       setError(e?.message || String(e))
       setStatus('error')
+      reportError('connect', e?.message || String(e))
     }
   }, [config, startAutopilot, startTikTokFeed])
 

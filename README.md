@@ -54,7 +54,7 @@ Open `http://localhost:3000` and press **Start Live** — the mic opens on that 
 2. Browser initializes AvatarKit in `DrivingServiceMode.direct` at PCM16 mono / 24 kHz.
 3. Nadia is loaded into the stage and `controller.start()` connects Motion Server.
 4. `/api/gemini/token` uses the server-only Gemini key to mint a one-use ephemeral Live token.
-5. Browser connects directly to `gemini-3.8-live` with the Kimmy system prompt and Kore voice.
+5. Browser connects directly to `gemini-3.8-live-extended-thinking` with the Kimmy system prompt and Sulafat voice.
 6. Viewer mic is converted to PCM16 / 16 kHz and streamed into Gemini.
 7. Gemini native audio (24 kHz PCM) is sent directly to `AvatarController.send()`.
 8. Gemini interruptions call `controller.interrupt()` so Nadia stops stale playback immediately.
@@ -66,7 +66,7 @@ Edit `lib/kimmy-prompt.ts`.
 Change Gemini voice/model in `.env.local`:
 
 ```env
-GEMINI_LIVE_MODEL=gemini-3.8-live
+GEMINI_LIVE_MODEL=gemini-3.8-live-extended-thinking
 GEMINI_VOICE=Kore
 ```
 

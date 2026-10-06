@@ -12,7 +12,7 @@ Next.js 16 + React 19 + TypeScript strict. Single-page realtime avatar; no tests
 ## Env / security
 
 - Secrets are server-only: never use `NEXT_PUBLIC_*` for `SPATIUS_API_KEY` / `GEMINI_API_KEY`.
-- Public IDs live in `.env.example` (`SPATIUS_APP_ID`, `SPATIUS_AVATAR_ID`); model/voice via `GEMINI_LIVE_MODEL` (default `gemini-3.8-live`) / `GEMINI_VOICE` (default `Kore`).
+- Public IDs live in `.env.example` (`SPATIUS_APP_ID`, `SPATIUS_AVATAR_ID`); model/voice via `GEMINI_LIVE_MODEL` (default `gemini-3.8-live-extended-thinking`) / `GEMINI_VOICE` (default `Sulafat`).
 - Browser only ever gets short-lived tokens from `POST /api/spatius/session-token` and `POST /api/gemini/token`.
 
 ## Architecture

@@ -15,7 +15,7 @@ export async function GET() {
     region: process.env.SPATIUS_REGION || 'auto',
     avatarSampleRate: 24000,
     geminiInputSampleRate: 16000,
-    geminiModel: process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-live',
+    geminiModel: process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-live-extended-thinking',
     geminiVoice: process.env.GEMINI_VOICE || 'Sulafat',
   })
 }

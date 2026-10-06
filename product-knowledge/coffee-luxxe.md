@@ -101,7 +101,7 @@ The supplier graphic contains **11 variants**, arranged left-to-right, top-to-bo
 - **Distinction:** Decaf does **not** mean guaranteed absolute zero caffeine. It also does not establish that the product is safe for pregnancy, breastfeeding, children, or a specific medical condition.
 - **Links:** https://luxebeautywellness.com/product/caffe-macchiato-decaf-pouch/ ; https://luxebeautywellness.com/product/caffe-macchiato-decaf-half-kilo/ ; https://luxebeautywellness.com/product/caffe-macchiato-decaf-kilo-pouch/
 
-**Approved natural seller line:** “Kung sensitive kayo sa regular coffee, mga mima, may Decaf version din tayo. Decaffeinated siya, pero siyempre hindi ibig sabihin automatic zero caffeine. Original at Decaf magkaiba—piliin n'yo yung tama sa yellow basket.”
+**Approved natural seller line:** “Kung sensitive kayo sa regular coffee, mga mima, may Decaf version din tayo. Decaffeinated siya, pero siyempre hindi ibig sabihin automatic zero caffeine. Original at Decaf magkaiba—piliin n'yo yung tama sa pinned link.”
 
 ### 4.3 Caffe Black
 
@@ -237,7 +237,7 @@ A: “May promo picture na may ‘with freebie,’ pero i-check muna natin yung 
 A: “May HALAL logo sa reference packaging, pero para siguradong applicable sa exact variant/batch, check natin yung seal at certificate details mismo sa pack.”
 
 **Q: “Saan mag-checkout?”**  
-A: “Nasa yellow basket yung available products. Piliin mo muna Original o Decaf at pouch o jar, then check mo yung final price, shipping, at vouchers bago mag-place ng order.”
+A: “Nasa pinned link yung available products. Piliin mo muna Original o Decaf at pouch o jar, then check mo yung final price, shipping, at vouchers bago mag-place ng order.”
 
 **Q: “May COD at kailan delivery?”**  
 A: “Depende sa location, courier at selected seller. Makikita mo sa checkout kung may COD at yung actual delivery estimate.”
